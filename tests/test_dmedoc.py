@@ -104,6 +104,77 @@ class TestSim(unittest.TestCase):
         self.assertEqual(len(out), 2)  # the critical cause + the "stopped" notice
         self.assertTrue(all(f.level == "error" for f in out))
 
+    def test_bin_configures_flash(self):
+        from dmedoc import binfile
+        from dmedoc.sim import bin_summary, flash_fault_from_bin
+
+        self.assertFalse(flash_fault_from_bin(None))
+        good = binfile.analyse(bytes(range(256)) * 2048, "good.bin")  # 512 KB, no erased block
+        self.assertFalse(flash_fault_from_bin(good))
+        bad = binfile.analyse(b"\xff" * 512 * 1024, "bad.bin")
+        self.assertTrue(flash_fault_from_bin(bad))
+        self.assertIn("bad.bin", bin_summary(bad))
+        self.assertIn("MS42", bin_summary(good))
+
+    def test_real_ecu_source(self):
+        from unittest import mock
+
+        from dmedoc import sim
+        from dmedoc.ds2 import NoResponse, Response
+
+        class Silent:
+            def __init__(self, port):
+                raise NoResponse("timeout")
+
+        with mock.patch.object(sim, "DS2Link", Silent):
+            ecu = sim.query_real_ecu("COM9")
+        self.assertFalse(ecu.ok)
+        src = sim.SimSource(real_ecu=ecu)
+        self.assertTrue(src.power_fault())
+
+        class Talking:
+            def __init__(self, port):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def ident(self):
+                return Response(0x12, 0xA0, b"1430844")
+
+            def read_faults(self):
+                return Response(0x12, 0xA0, b"")
+
+        with mock.patch.object(sim, "DS2Link", Talking):
+            ecu = sim.query_real_ecu("COM9")
+        self.assertTrue(ecu.ok)
+        self.assertIn("1430844", ecu.text)
+        self.assertFalse(sim.SimSource(real_ecu=ecu).power_fault())
+
+    def test_port_error_is_not_an_ecu_fault(self):
+        from unittest import mock
+
+        from dmedoc import sim
+        from dmedoc.ds2 import PortError
+
+        def boom(port):
+            raise PortError("no such port")
+
+        with mock.patch.object(sim, "DS2Link", boom):
+            ecu = sim.query_real_ecu("COM99")
+        self.assertTrue(ecu.pc_side)
+        self.assertFalse(sim.SimSource(real_ecu=ecu).power_fault())
+
+    def test_default_source_has_no_faults(self):
+        from dmedoc.sim import SimSource
+
+        s = SimSource()
+        self.assertFalse(s.flash_fault())
+        self.assertFalse(s.power_fault())
+
     def test_ignition_off(self):
         from dmedoc.sim import SimState, diagnose_sim
 

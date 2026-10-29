@@ -17,6 +17,14 @@ Outil de diagnostic **en lecture seule** pour calculateurs moteur BMW **MS42** (
 
 ## Simulateur 3D
 
+Au lancement, le simulateur demande d'où viennent les réglages du calculateur :
+
+- **Normal** : un calculateur virtuel par défaut. Aucun fichier, rien à fournir, ça marche directement.
+- **Charger un .bin** : le calculateur virtuel est configuré avec ton dump (type, références, intégrité). Un fichier incomplet ou corrompu active automatiquement la panne *Flash corrompu*.
+- **Utiliser le vrai calculateur** : lit le calculateur physique une fois en K-line (identification + mémoire défauts, lecture seule). S'il ne répond pas, la panne *Calculateur non alimenté* est activée. Un problème de port côté PC est signalé comme tel et le calculateur virtuel est utilisé à la place.
+
+Les vraies valeurs de calibration (limiteur de régime, cartographies) ne sont pas encore lues, et les capteurs restent toujours virtuels.
+
 Une voiture à conduire (la caméra la suit) avec un **calculateur virtuel** : mets le contact, démarre le moteur, injecte des pannes (calculateur non alimenté, flash corrompu, pas de signal vilebrequin, EWS non validé) et le programme explique pourquoi le moteur ne tourne pas, avec le même genre de règles que le vrai diagnostic.
 
 Les **pannes critiques** (surtension, polarité inversée, court-circuit d'une sortie) **arrêtent immédiatement la simulation** : l'alimentation est coupée, la voiture et les commandes se figent et un bandeau rouge explique quoi corriger. C'est ce que devra faire un vrai banc pour ne pas endommager un calculateur.

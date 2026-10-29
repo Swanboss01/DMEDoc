@@ -12,7 +12,8 @@ import sys
 
 from . import __version__
 from .i18n import load_saved_lang, set_lang, t
-from .sim import SimState, diagnose_sim
+from .binfile import analyse_file
+from .sim import SimSource, SimState, diagnose_sim, query_real_ecu
 from .diagnose import format_findings
 
 CAR_LENGTH = 4.2  # world units (~metres)
@@ -43,7 +44,7 @@ def _make_app(shot: bool):
 
 
 class Simulator:
-    def __init__(self, shot: bool = False) -> None:
+    def __init__(self, shot: bool = False, source: SimSource | None = None) -> None:
         from direct.gui.DirectGui import DGG, DirectButton, DirectFrame
         from direct.gui.OnscreenText import OnscreenText
         from panda3d.core import (
@@ -58,7 +59,10 @@ class Simulator:
         self.DGG = DGG
         self.base = base = _make_app(shot)
         self.Filename = Filename
-        self.state = SimState()
+        self.source = source or SimSource()
+        self.base_flash = self.source.flash_fault()  # verdict of the loaded .bin
+        self.base_power = self.source.power_fault()  # real ECU that does not answer
+        self.state = SimState(fault_flash=self.base_flash, fault_power=self.base_power)
         self.mode = "off"  # off | ign | crank | run | fail
         self.crank_t = 0.0
         self.speed = 0.0
@@ -251,6 +255,10 @@ class Simulator:
             parent=base.a2dTopRight, text="", font=font, fg=(1, 1, 1, 1), shadow=(0, 0, 0, 1),
             scale=0.05, pos=(-0.05, -0.18), align=TextNode.ARight,
         )
+        self.t_bin = OnscreenText(
+            parent=base.a2dTopRight, text=self.source.summary(), font=font, fg=(0.85, 0.95, 1, 1),
+            bg=(0, 0, 0, 0.55), scale=0.036, pos=(-0.05, -0.27), align=TextNode.ARight, wordwrap=30,
+        )
         self.t_halt = OnscreenText(
             parent=base.a2dTopCenter, text="", font=font, fg=(1, 1, 1, 1), bg=(0.75, 0.05, 0.05, 0.95),
             scale=0.06, pos=(0, -0.45), align=TextNode.ACenter, wordwrap=26,
@@ -304,6 +312,8 @@ class Simulator:
     def clear_faults(self) -> None:
         for n in SimState.FAULTS + SimState.CRITICAL:
             setattr(self.state, "fault_" + n, False)
+        self.state.fault_flash = self.base_flash  # the loaded .bin keeps its own verdict
+        self.state.fault_power = self.base_power  # so does an unresponsive real ECU
         if self.mode == "halt":
             self.mode = "off"  # power stays off: restart manually
             self.t_halt.setText("")
@@ -404,6 +414,81 @@ class Simulator:
         self.base.run()
 
 
+def ask_source() -> tuple[bool, SimSource | None]:
+    """Startup dialog: normal / load a .bin / use the real ECU. Returns (continue?, source)."""
+    import tkinter as tk
+    from tkinter import filedialog, messagebox, ttk
+
+    from .gui import list_ports, set_window_icon
+
+    root = tk.Tk()
+    root.title(t("sim_ask_title"))
+    root.resizable(False, False)
+    set_window_icon(root)
+    choice = tk.StringVar(value="default")
+    path_var = tk.StringVar(value="")
+    result: dict = {"source": None}
+
+    body = ttk.Frame(root, padding=14)
+    body.pack()
+    ttk.Radiobutton(body, text=t("sim_src_default"), variable=choice, value="default").grid(
+        row=0, column=0, columnspan=3, sticky="w", pady=3
+    )
+    ttk.Radiobutton(body, text=t("sim_src_bin"), variable=choice, value="bin").grid(
+        row=1, column=0, columnspan=3, sticky="w", pady=3
+    )
+
+    def browse() -> None:
+        p = filedialog.askopenfilename(
+            parent=root, title=t("sim_ask_bin"), filetypes=[("ECU dump", "*.bin"), ("All", "*.*")]
+        )
+        if p:
+            path_var.set(p)
+            choice.set("bin")
+
+    ttk.Button(body, text=t("sim_src_browse"), command=browse).grid(row=2, column=0, sticky="w", padx=(22, 6))
+    ttk.Label(body, textvariable=path_var, width=46).grid(row=2, column=1, columnspan=2, sticky="w")
+    ttk.Radiobutton(body, text=t("sim_src_ecu"), variable=choice, value="ecu").grid(
+        row=3, column=0, columnspan=3, sticky="w", pady=(10, 3)
+    )
+    ttk.Label(body, text=t("sim_src_port")).grid(row=4, column=0, sticky="e", padx=(22, 6))
+    port = ttk.Combobox(body, values=list_ports(), width=10)
+    port.grid(row=4, column=1, sticky="w")
+    if port["values"]:
+        port.current(0)
+    ttk.Label(body, text=t("sim_ecu_note"), foreground="gray").grid(row=5, column=0, columnspan=3, sticky="w", pady=(4, 10))
+
+    def ok() -> None:
+        c = choice.get()
+        if c == "default":
+            result["source"] = SimSource()
+        elif c == "bin":
+            if not path_var.get():
+                messagebox.showwarning(t("sim_ask_title"), t("sim_src_nofile"), parent=root)
+                return
+            try:
+                result["source"] = SimSource(bin_report=analyse_file(path_var.get()))
+            except OSError as e:
+                messagebox.showerror(t("sim_ask_title"), t("read_error", err=e), parent=root)
+                return
+        else:
+            if not port.get().strip():
+                messagebox.showwarning(t("sim_ask_title"), t("sim_src_noport"), parent=root)
+                return
+            root.config(cursor="watch")
+            root.update()
+            result["source"] = SimSource(real_ecu=query_real_ecu(port.get().strip()))
+        root.destroy()
+
+    row = ttk.Frame(body)
+    row.grid(row=6, column=0, columnspan=3, sticky="e")
+    ttk.Button(row, text=t("sim_src_cancel"), command=root.destroy).pack(side="right")
+    ttk.Button(row, text=t("sim_src_ok"), command=ok).pack(side="right", padx=6)
+
+    root.mainloop()
+    return result["source"] is not None, result["source"]
+
+
 def run_sim(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if "--lang" in argv:
@@ -418,7 +503,19 @@ def run_sim(argv: list[str] | None = None) -> int:
         return 1
 
     shot = argv[argv.index("--shot") + 1] if "--shot" in argv else None
-    sim = Simulator(shot=bool(shot))
+    bin_path = argv[argv.index("--bin") + 1] if "--bin" in argv else None
+    ecu_port = argv[argv.index("--ecu") + 1] if "--ecu" in argv else None
+    if bin_path:
+        source = SimSource(bin_report=analyse_file(bin_path))
+    elif ecu_port:
+        source = SimSource(real_ecu=query_real_ecu(ecu_port))
+    elif shot:
+        source = SimSource()
+    else:
+        ok, source = ask_source()
+        if not ok:
+            return 0
+    sim = Simulator(shot=bool(shot), source=source)
     if shot:
         _dev_shot(sim, shot, argv)
         return 0

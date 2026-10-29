@@ -17,6 +17,14 @@ English | [Français](README.fr.md)
 
 ## 3D simulator
 
+On launch the simulator asks where the ECU settings come from:
+
+- **Normal**: a default virtual ECU. No file, nothing to provide, it just works.
+- **Load a .bin**: the virtual ECU is configured from your dump (ECU type, references, completeness). An incomplete or corrupt file automatically enables the *Bad flash* fault.
+- **Use the real ECU**: reads the physical ECU once over K-line (identification + fault memory, read-only). If it does not answer, the *ECU unpowered* fault is enabled. A port problem on the PC is reported as such and the virtual ECU is used instead.
+
+Real calibration values (rev limiter, maps) are not read yet, and the sensors always stay virtual.
+
 A car you can drive (camera follows it) with a **virtual ECU**: switch the ignition on, start the engine, inject faults (unpowered ECU, bad flash, no crank signal, EWS not validated) and the program explains why the engine won't run, using the same kind of rules as the real diagnosis.
 
 **Critical faults** (overvoltage, reversed polarity, output short circuit) **stop the simulation immediately**: power is cut, the car and the controls freeze and a red banner explains what to fix. This mirrors what a real bench must do to avoid damaging an ECU.
