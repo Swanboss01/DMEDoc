@@ -1,10 +1,10 @@
-"""Couche DS2 (K-line BMW) en LECTURE SEULE.
+"""DS2 layer (BMW K-line), READ-ONLY.
 
-Trame DS2 : [adresse][longueur totale][données...][XOR de tous les octets précédents]
-Liaison : 9600 bauds, 8 bits, parité paire, 1 stop.
+DS2 frame: [address][total length][data...][XOR of all previous bytes]
+Link: 9600 baud, 8 data bits, even parity, 1 stop bit.
 
-Ce module n'envoie que des commandes de lecture (identification, mémoire défauts).
-Aucune commande d'écriture, d'effacement ou de flash n'est implémentée.
+This module only sends read commands (identification, fault memory).
+No write, erase or flash command is implemented.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ class NoResponse(DS2Error):
 
 
 class PortError(DS2Error):
-    """Port série inutilisable (absent, occupé, pyserial manquant)."""
+    """Unusable serial port (missing, busy, pyserial not installed)."""
 
 
 def xor_checksum(data: bytes) -> int:
@@ -44,13 +44,13 @@ def build_frame(addr: int, payload: bytes) -> bytes:
 
 
 def parse_frame(frame: bytes) -> tuple[int, bytes]:
-    """Retourne (adresse, données) après vérification longueur + checksum."""
+    """Returns (address, data) after checking length and checksum."""
     if len(frame) < 4:
-        raise DS2Error(f"trame trop courte ({len(frame)} octets)")
+        raise DS2Error(f"frame too short ({len(frame)} bytes)")
     if frame[1] != len(frame):
-        raise DS2Error(f"longueur annoncée {frame[1]} != reçue {len(frame)}")
+        raise DS2Error(f"announced length {frame[1]} != received {len(frame)}")
     if xor_checksum(frame[:-1]) != frame[-1]:
-        raise DS2Error("checksum invalide")
+        raise DS2Error("invalid checksum")
     return frame[0], frame[2:-1]
 
 
@@ -70,7 +70,7 @@ class DS2Link:
         try:
             import serial  # pyserial
         except ImportError as e:  # pragma: no cover
-            raise PortError("pyserial manquant : pip install pyserial") from e
+            raise PortError("pyserial is not installed: pip install pyserial") from e
         try:
             self._ser = serial.Serial(
                 port,
@@ -81,7 +81,7 @@ class DS2Link:
                 timeout=timeout,
             )
         except serial.SerialException as e:
-            raise PortError(f"impossible d'ouvrir {port} : {e}") from e
+            raise PortError(f"cannot open {port}: {e}") from e
 
     def close(self) -> None:
         self._ser.close()
@@ -95,7 +95,7 @@ class DS2Link:
     def _read_exact(self, n: int) -> bytes:
         buf = self._ser.read(n)
         if len(buf) != n:
-            raise NoResponse(f"{len(buf)}/{n} octets reçus avant timeout")
+            raise NoResponse(f"{len(buf)}/{n} bytes received before timeout")
         return buf
 
     def request(self, addr: int, payload: bytes) -> Response:
@@ -104,17 +104,17 @@ class DS2Link:
         self._ser.write(frame)
         self._ser.flush()
 
-        # Les interfaces K-line simples renvoient l'écho de ce qu'on émet.
+        # Simple K-line interfaces echo back what we transmit.
         head = self._read_exact(2)
         if head == frame[:2]:
             rest = self._read_exact(len(frame) - 2)
             if rest != frame[2:]:
-                raise DS2Error("écho corrompu (câblage ou interface ?)")
+                raise DS2Error("corrupted echo (wiring or interface?)")
             head = self._read_exact(2)
         resp = head + self._read_exact(max(head[1] - 2, 0))
         got_addr, body = parse_frame(resp)
         if not body:
-            raise DS2Error("réponse sans statut")
+            raise DS2Error("reply without status byte")
         return Response(got_addr, body[0], body[1:])
 
     def ident(self, addr: int = ADDR_DME) -> Response:

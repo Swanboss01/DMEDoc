@@ -1,9 +1,10 @@
-"""Génération des rapports texte, partagée par le CLI et l'interface graphique."""
+"""Text report generation, shared by the CLI and the GUI."""
 
 from __future__ import annotations
 
 from . import binfile, diagnose
 from .ds2 import DS2Error, DS2Link
+from .i18n import t
 
 
 def _ascii(data: bytes) -> str:
@@ -11,7 +12,7 @@ def _ascii(data: bytes) -> str:
 
 
 def report_check(port: str) -> tuple[str, bool]:
-    """Retourne (texte, succès)."""
+    """Returns (text, success)."""
     ident = None
     error: Exception | None = None
     faults = None
@@ -24,11 +25,11 @@ def report_check(port: str) -> tuple[str, bool]:
 
     lines: list[str] = []
     if ident is not None:
-        lines.append(f"Identification (brut) : {ident.data.hex(' ')}")
-        lines.append(f"Identification (ASCII): {_ascii(ident.data)}")
+        lines.append(t("ident_raw", v=ident.data.hex(" ")))
+        lines.append(t("ident_ascii", v=_ascii(ident.data)))
     if faults is not None:
-        lines.append(f"Mémoire défauts (brut): {faults.data.hex(' ')}")
-        lines.append("(le décodage des codes défaut n'est pas encore implémenté)")
+        lines.append(t("faults_raw", v=faults.data.hex(" ")))
+        lines.append(t("faults_not_decoded"))
     lines.append(diagnose.format_findings(diagnose.diagnose_link(error, ident)))
     return "\n".join(lines), error is None
 
@@ -36,34 +37,34 @@ def report_check(port: str) -> tuple[str, bool]:
 def report_bin(path: str) -> str:
     rep = binfile.analyse_file(path)
     lines = [
-        f"Fichier      : {rep.path}",
-        f"Taille       : {rep.size} octets ({rep.size_hint or 'taille inconnue'})",
-        f"SHA-256      : {rep.sha256}",
-        f"CRC32        : {rep.crc32:08X}",
-        f"0xFF / 0x00  : {rep.ff_ratio:.1%} / {rep.zero_ratio:.1%}",
-        f"Blocs vides  : {rep.erased_blocks}/{rep.total_blocks}",
+        t("r_file", v=rep.path),
+        t("r_size", size=rep.size, hint=rep.size_hint or t("r_size_unknown")),
+        t("r_sha", v=rep.sha256),
+        t("r_crc", v=f"{rep.crc32:08X}"),
+        t("r_ratio", ff=f"{rep.ff_ratio:.1%}", zero=f"{rep.zero_ratio:.1%}"),
+        t("r_blocks", n=rep.erased_blocks, total=rep.total_blocks),
     ]
     if rep.part_numbers:
-        lines.append(f"Nombres à 7 chiffres (références possibles) : {', '.join(rep.part_numbers)}")
+        lines.append(t("r_parts", v=", ".join(rep.part_numbers)))
     lines.append(diagnose.format_findings(diagnose.diagnose_bin(rep)))
     return "\n".join(lines)
 
 
 def report_diff(path_a: str, path_b: str) -> tuple[str, bool]:
-    """Retourne (texte, identiques)."""
+    """Returns (text, identical)."""
     with open(path_a, "rb") as f:
         a = f.read()
     with open(path_b, "rb") as f:
         b = f.read()
     lines: list[str] = []
     if len(a) != len(b):
-        lines.append(f"[ATTENTION] Tailles différentes : {len(a)} vs {len(b)}")
+        lines.append(f"{t('lvl_warning')} {t('diff_size', a=len(a), b=len(b))}")
     ranges = binfile.diff_ranges(a, b)
     if not ranges:
-        lines.append("Aucune différence sur la longueur commune.")
+        lines.append(t("diff_none"))
         return "\n".join(lines), True
     total = sum(e - s for s, e in ranges)
-    lines.append(f"{len(ranges)} plage(s) différente(s), {total} octets (max 200 plages listées) :")
+    lines.append(t("diff_summary", n=len(ranges), total=total))
     for s, e in ranges:
-        lines.append(f"  0x{s:06X} - 0x{e - 1:06X}  ({e - s} octets)")
+        lines.append(t("diff_line", s=s, e=e - 1, length=e - s))
     return "\n".join(lines), False

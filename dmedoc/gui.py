@@ -1,4 +1,4 @@
-"""Interface graphique tkinter de DMEDoc."""
+"""DMEDoc tkinter GUI."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from . import __version__
+from .i18n import LANGS, load_saved_lang, save_lang, set_lang, t
 from .report import report_bin, report_check, report_diff
 
 
@@ -19,39 +20,57 @@ def list_ports() -> list[str]:
         return []
 
 
+def choose_language() -> str:
+    """Small modal window asking for the language. Closing it keeps English."""
+    root = tk.Tk()
+    root.title("DMEDoc")
+    root.resizable(False, False)
+    chosen = {"lang": "en"}
+
+    ttk.Label(root, text="Choose your language / Choisissez votre langue", padding=14).pack()
+    row = ttk.Frame(root, padding=(14, 0, 14, 14))
+    row.pack()
+
+    def pick(code: str) -> None:
+        chosen["lang"] = code
+        root.destroy()
+
+    for code, label in LANGS.items():
+        ttk.Button(row, text=label, width=14, command=lambda c=code: pick(c)).pack(side="left", padx=6)
+
+    root.mainloop()
+    return chosen["lang"]
+
+
 class App(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
-        self.title(f"DMEDoc {__version__} — PREVIEW (lecture seule)")
+        self.restart = False
+        self.title(t("title", ver=__version__))
         self.geometry("760x520")
         self.minsize(600, 400)
 
         top = ttk.Frame(self, padding=8)
         top.pack(fill="x")
-        ttk.Label(top, text="Port K-line :").pack(side="left")
+        ttk.Label(top, text=t("port_label")).pack(side="left")
         self.port = ttk.Combobox(top, width=10, values=list_ports())
         self.port.pack(side="left", padx=4)
         if self.port["values"]:
             self.port.current(0)
-        ttk.Button(top, text="Actualiser", command=self.refresh_ports).pack(side="left")
-        self.btn_check = ttk.Button(top, text="Diagnostiquer le calculateur", command=self.on_check)
+        ttk.Button(top, text=t("refresh"), command=self.refresh_ports).pack(side="left")
+        self.btn_check = ttk.Button(top, text=t("btn_check"), command=self.on_check)
         self.btn_check.pack(side="left", padx=12)
 
         mid = ttk.Frame(self, padding=(8, 0))
         mid.pack(fill="x")
-        ttk.Button(mid, text="Analyser un .bin…", command=self.on_bin).pack(side="left")
-        ttk.Button(mid, text="Comparer deux .bin…", command=self.on_diff).pack(side="left", padx=6)
-        ttk.Button(mid, text="Copier le rapport", command=self.on_copy).pack(side="right")
+        ttk.Button(mid, text=t("btn_bin"), command=self.on_bin).pack(side="left")
+        ttk.Button(mid, text=t("btn_diff"), command=self.on_diff).pack(side="left", padx=6)
+        ttk.Button(mid, text=t("btn_copy"), command=self.on_copy).pack(side="right")
+        ttk.Button(mid, text=t("btn_lang"), command=self.on_lang).pack(side="right", padx=6)
 
         self.out = tk.Text(self, wrap="word", font=("Consolas", 10))
         self.out.pack(fill="both", expand=True, padx=8, pady=8)
-        self.show(
-            "Bienvenue. Version preview, jamais testée sur un vrai calculateur.\n"
-            "Rien n'est écrit dans le calculateur : lecture seule.\n\n"
-            "1) Branche le câble K-line, alimente le calculateur (12 V + contact), choisis le port,\n"
-            "   puis « Diagnostiquer le calculateur ».\n"
-            "2) Ou analyse un dump .bin fait avec MS4x Flasher."
-        )
+        self.show(t("welcome"))
 
     def refresh_ports(self) -> None:
         self.port["values"] = list_ports()
@@ -66,48 +85,65 @@ class App(tk.Tk):
         self.clipboard_clear()
         self.clipboard_append(self.out.get("1.0", "end").strip())
 
+    def on_lang(self) -> None:
+        self.restart = True
+        self.destroy()
+
     def on_check(self) -> None:
         port = self.port.get().strip()
         if not port:
-            messagebox.showwarning("DMEDoc", "Choisis un port série (aucun détecté ? Actualiser).")
+            messagebox.showwarning("DMEDoc", t("no_port"))
             return
         self.btn_check.state(["disabled"])
-        self.show(f"Interrogation du calculateur sur {port}…")
+        self.show(t("querying", port=port))
 
         def work() -> None:
             try:
                 text, _ = report_check(port)
-            except Exception as e:  # ne jamais laisser le thread mourir en silence
-                text = f"[ERREUR] Erreur inattendue : {e!r}"
+            except Exception as e:  # never let the worker die silently
+                text = f"{t('lvl_error')} {t('unexpected', err=repr(e))}"
             self.after(0, lambda: (self.show(text), self.btn_check.state(["!disabled"])))
 
         threading.Thread(target=work, daemon=True).start()
 
     def on_bin(self) -> None:
-        path = filedialog.askopenfilename(title="Dump .bin", filetypes=[("Dump", "*.bin"), ("Tous", "*.*")])
+        path = filedialog.askopenfilename(title=t("dlg_bin"), filetypes=[("Dump", "*.bin"), ("All", "*.*")])
         if not path:
             return
         try:
             self.show(report_bin(path))
         except OSError as e:
-            self.show(f"[ERREUR] Lecture impossible : {e}")
+            self.show(f"{t('lvl_error')} {t('read_error', err=e)}")
 
     def on_diff(self) -> None:
-        a = filedialog.askopenfilename(title="Premier .bin", filetypes=[("Dump", "*.bin"), ("Tous", "*.*")])
+        a = filedialog.askopenfilename(title=t("dlg_first"), filetypes=[("Dump", "*.bin"), ("All", "*.*")])
         if not a:
             return
-        b = filedialog.askopenfilename(title="Second .bin", filetypes=[("Dump", "*.bin"), ("Tous", "*.*")])
+        b = filedialog.askopenfilename(title=t("dlg_second"), filetypes=[("Dump", "*.bin"), ("All", "*.*")])
         if not b:
             return
         try:
             text, _ = report_diff(a, b)
-            self.show(f"A : {a}\nB : {b}\n\n{text}")
+            self.show(f"A: {a}\nB: {b}\n\n{text}")
         except OSError as e:
-            self.show(f"[ERREUR] Lecture impossible : {e}")
+            self.show(f"{t('lvl_error')} {t('read_error', err=e)}")
 
 
 def main() -> None:
-    App().mainloop()
+    lang = load_saved_lang()
+    if lang is None:  # first launch: ask
+        lang = choose_language()
+        save_lang(lang)
+    set_lang(lang)
+
+    while True:
+        app = App()
+        app.mainloop()
+        if not app.restart:
+            break
+        lang = choose_language()
+        save_lang(lang)
+        set_lang(lang)
 
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
-"""Analyse heuristique d'un dump .bin de calculateur MS4x.
+"""Heuristic analysis of an MS4x ECU .bin dump.
 
-IMPORTANT : ce module NE vérifie PAS les checksums Siemens (algorithmes non
-implémentés). Il détecte seulement des signes évidents de dump incomplet ou
-corrompu : taille inattendue, zones effacées (0xFF), fichier vide.
+IMPORTANT: this module does NOT verify Siemens checksums (algorithms not
+implemented). It only detects obvious signs of an incomplete or corrupt dump:
+unexpected size, erased areas (0xFF), empty file.
 """
 
 from __future__ import annotations
@@ -12,11 +12,11 @@ import re
 import zlib
 from dataclasses import dataclass, field
 
-# Tailles de flash usuelles (octets). Indicatif, à confirmer sur matériel réel.
+# Usual flash sizes (bytes). Indicative, to be confirmed on real hardware.
 KNOWN_SIZES = {
-    256 * 1024: "MS41 (256 Ko)",
-    512 * 1024: "MS42 / MS43 (512 Ko)",
-    1024 * 1024: "MS45 (1 Mo)",
+    256 * 1024: "MS41 (256 KB)",
+    512 * 1024: "MS42 / MS43 (512 KB)",
+    1024 * 1024: "MS45 (1 MB)",
 }
 
 BLOCK = 4096
@@ -34,7 +34,8 @@ class BinReport:
     erased_blocks: int
     total_blocks: int
     part_numbers: list[str] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
+    # (i18n key, format params): translated at display time
+    warnings: list[tuple[str, dict]] = field(default_factory=list)
 
 
 def analyse(data: bytes, path: str = "<mémoire>") -> BinReport:
@@ -60,21 +61,16 @@ def analyse(data: bytes, path: str = "<mémoire>") -> BinReport:
     )
 
     if size == 0:
-        rep.warnings.append("Fichier vide.")
+        rep.warnings.append(("w_empty", {}))
         return rep
     if rep.size_hint is None:
-        rep.warnings.append(
-            f"Taille inhabituelle ({size} octets) : lecture incomplète ou autre calculateur."
-        )
+        rep.warnings.append(("w_size", {"size": size}))
     if rep.ff_ratio == 1.0:
-        rep.warnings.append("Tout est à 0xFF : mémoire entièrement effacée.")
+        rep.warnings.append(("w_all_ff", {}))
     elif rep.erased_blocks / len(blocks) > 0.25:
-        rep.warnings.append(
-            f"{rep.erased_blocks}/{len(blocks)} blocs de 4 Ko sont vides (0xFF) : "
-            "flash interrompu ou lecture partielle probable."
-        )
+        rep.warnings.append(("w_blocks", {"n": rep.erased_blocks, "total": len(blocks)}))
     if rep.zero_ratio == 1.0:
-        rep.warnings.append("Tout est à 0x00 : lecture ratée.")
+        rep.warnings.append(("w_all_zero", {}))
     return rep
 
 

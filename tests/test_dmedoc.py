@@ -28,20 +28,20 @@ class TestDS2(unittest.TestCase):
 
 class TestBin(unittest.TestCase):
     def test_empty(self):
-        self.assertIn("Fichier vide.", binfile.analyse(b"").warnings)
+        self.assertIn(("w_empty", {}), binfile.analyse(b"").warnings)
 
     def test_all_ff(self):
         r = binfile.analyse(b"\xff" * 512 * 1024)
-        self.assertEqual(r.size_hint, "MS42 / MS43 (512 Ko)")
-        self.assertTrue(any("0xFF" in w for w in r.warnings))
+        self.assertEqual(r.size_hint, "MS42 / MS43 (512 KB)")
+        self.assertIn(("w_all_ff", {}), r.warnings)
 
     def test_partial_flash(self):
         data = b"\x12\x34" * (128 * 1024) + b"\xff" * (256 * 1024)
         r = binfile.analyse(data)
-        self.assertTrue(any("blocs" in w for w in r.warnings))
+        self.assertTrue(any(k == "w_blocks" for k, _ in r.warnings))
 
     def test_odd_size(self):
-        self.assertTrue(any("Taille inhabituelle" in w for w in binfile.analyse(b"\x01" * 1000).warnings))
+        self.assertTrue(any(k == "w_size" for k, _ in binfile.analyse(b"\x01" * 1000).warnings))
 
     def test_part_number(self):
         data = b"\x00" * 100 + b"1430844" + b"\x00" * 100
@@ -54,8 +54,23 @@ class TestBin(unittest.TestCase):
 class TestDiagnose(unittest.TestCase):
     def test_no_response_explains(self):
         out = diagnose.diagnose_link(NoResponse("x"), None)
-        self.assertEqual(out[0].level, "ERREUR")
-        self.assertTrue(any("alimentation" in f.message for f in out))
+        self.assertEqual(out[0].level, "error")
+        self.assertTrue(any("12 V" in f.message for f in out))
+
+    def test_translations_complete(self):
+        from dmedoc.i18n import STRINGS
+
+        self.assertEqual(set(STRINGS["en"]), set(STRINGS["fr"]))
+
+    def test_french_output(self):
+        from dmedoc.i18n import set_lang
+
+        set_lang("fr")
+        try:
+            out = diagnose.format_findings(diagnose.diagnose_link(NoResponse("x"), None))
+            self.assertIn("[ERREUR]", out)
+        finally:
+            set_lang("en")
 
 
 if __name__ == "__main__":

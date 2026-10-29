@@ -1,41 +1,52 @@
 # DMEDoc (PREVIEW)
 
-Outil de diagnostic **en lecture seule** pour calculateurs moteur BMW **MS42** (Siemens), pensé pour répondre à la question : *pourquoi ce calculateur ne fonctionne pas ?*
+English | [Français](README.fr.md)
 
-> ⚠️ **Version preview, jamais testée sur un vrai calculateur.** Les trames DS2 sont écrites d'après la documentation communautaire et les tests unitaires, pas validées sur matériel. Les retours de test sont les bienvenus (ouvrir une *issue* avec la sortie de `dmedoc check`).
+**Read-only** diagnostic tool for BMW **MS42** (Siemens) engine ECUs, built to answer one question: *why doesn't this ECU work?*
 
-## Ce que ça fait
+> ⚠️ **Preview, never tested on a real ECU.** The DS2 frames are written from community documentation and unit tests, not validated on hardware. Test feedback is welcome (open an issue with the output of `check`).
 
-| Commande | Rôle | Matériel |
+## What it does
+
+| Feature | Purpose | Hardware |
 |---|---|---|
-| `dmedoc check --port COM3` | Interroge le calculateur en DS2 (identification + mémoire défauts) et explique les causes probables si pas de réponse | Câble K-line USB, calculateur alimenté |
-| `dmedoc bin fichier.bin` | Analyse un dump : taille, zones effacées (0xFF), références, empreintes | Aucun |
-| `dmedoc diff a.bin b.bin` | Compare deux dumps (ex. calculateur HS vs fichier sain) | Aucun |
+| **Diagnose the ECU** (`dmedoc check --port COM3`) | Queries the ECU over DS2 (identification + fault memory) and explains the likely causes if it doesn't answer | USB K-line cable, powered ECU |
+| **Analyse a .bin** (`dmedoc bin file.bin`) | Checks a dump: size, erased areas (0xFF), possible part numbers, fingerprints | None |
+| **Compare two .bin** (`dmedoc diff a.bin b.bin`) | Compares two dumps (e.g. dead ECU vs a known-good file) | None |
 
-## Ce que ça ne fait PAS
+## What it does NOT do
 
-- Aucun flash, aucune écriture, aucun effacement. Pour lire/écrire le calculateur, utiliser **MS4x Flasher**.
-- **Pas de vérification des checksums Siemens** (non implémentée) : `bin` détecte seulement les dumps manifestement incomplets.
-- Le décodage des codes défaut n'est pas encore fait : les octets sont affichés bruts.
+- No flashing, no writing, no erasing. To read/write the ECU use **MS4x Flasher**.
+- **No Siemens checksum verification** (not implemented): `bin` only detects obviously incomplete dumps.
+- Fault codes are not decoded yet: raw bytes are shown.
 
-## Version Windows (.exe)
+## Windows install
 
-`DMEDoc.exe` (interface graphique, demande les droits administrateur) est joint à la *release* « preview ». Windows SmartScreen / Defender peut l'avertir car il n'est pas signé : c'est normal pour un exe PyInstaller non signé.
+Download from the **Releases** page:
 
-Pour le reconstruire : `pip install pyinstaller pyserial` puis
-`pyinstaller --onefile --windowed --uac-admin --name DMEDoc run_gui.py`
+- `DMEDoc-Setup-0.1.0.exe`: installer (NSIS), with Start menu / desktop shortcuts and an uninstaller. English or French.
+- `DMEDoc.exe`: portable version, no installation.
 
-Le mode graphique est aussi disponible avec `python -m dmedoc gui`.
+Both open a graphical interface and ask for administrator rights. On first launch the program asks for your language (English or French); the *Language* button changes it later. Windows SmartScreen / Defender may warn about unsigned executables.
 
-## Installation (ligne de commande)
+Wiring: ECU K-line ↔ 12 V-compatible interface, DS2 at 9600 baud 8E1, ECU powered with 12 V and ignition (+15).
+
+## From source
 
 ```
 pip install pyserial
-python -m dmedoc bin mon_dump.bin
-python -m dmedoc check --port COM3
+python -m dmedoc gui
+python -m dmedoc bin my_dump.bin
+python -m dmedoc --lang fr check --port COM3
 ```
 
-Câblage : K-line du calculateur ↔ interface compatible 12 V, DS2 à 9600 bauds 8E1, calculateur alimenté en 12 V avec contact (+15).
+Build the executables:
+
+```
+pip install pyinstaller pyserial
+pyinstaller --onefile --windowed --uac-admin --name DMEDoc run_gui.py
+makensis installer.nsi
+```
 
 ## Tests
 
@@ -43,12 +54,12 @@ Câblage : K-line du calculateur ↔ interface compatible 12 V, DS2 à 9600 baud
 python -m unittest discover tests
 ```
 
-## Feuille de route
+## Roadmap
 
-- Décodage des codes défaut et des valeurs en direct
-- Vérification des checksums (après validation sur de vrais dumps)
-- Banc de simulation voiture (vilebrequin 60-2, came, capteurs, EWS)
+- Fault code decoding and live values
+- Checksum verification (after validation on real dumps)
+- Car simulation bench (60-2 crank signal, cam, sensors, EWS)
 
-## Licence
+## License
 
 MIT
