@@ -85,6 +85,7 @@ class App(tk.Tk):
         ttk.Button(mid, text=t("btn_diff"), command=self.on_diff).pack(side="left", padx=6)
         ttk.Button(mid, text=t("btn_copy"), command=self.on_copy).pack(side="right")
         ttk.Button(mid, text=t("btn_lang"), command=self.on_lang).pack(side="right", padx=6)
+        ttk.Button(mid, text=t("btn_sim"), command=self.on_sim).pack(side="left", padx=6)
 
         self.out = tk.Text(self, wrap="word", font=("Consolas", 10))
         self.out.pack(fill="both", expand=True, padx=8, pady=8)
@@ -102,6 +103,23 @@ class App(tk.Tk):
     def on_copy(self) -> None:
         self.clipboard_clear()
         self.clipboard_append(self.out.get("1.0", "end").strip())
+
+    def on_sim(self) -> None:
+        """Panda3D needs its own main loop: run the simulator as a separate process."""
+        import importlib.util
+        import subprocess
+
+        if getattr(sys, "frozen", False):
+            cmd = [sys.executable, "--sim"]
+        elif importlib.util.find_spec("panda3d") is None or importlib.util.find_spec("gltf") is None:
+            messagebox.showwarning("DMEDoc", t("sim_unavailable"))
+            return
+        else:
+            cmd = [sys.executable, "-m", "dmedoc", "sim"]
+        try:
+            subprocess.Popen(cmd)
+        except OSError as e:
+            self.show(f"{t('lvl_error')} {e}")
 
     def on_lang(self) -> None:
         self.restart = True

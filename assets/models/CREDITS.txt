@@ -1,0 +1,4 @@
+3D models (vehicle-truck-red, track-straight, track-corner, decoration-forest)
+and texture (Textures/colormap.png) are from "Starter Kit Racing" by Kenney
+(https://kenney.nl, https://github.com/KenneyNL/Starter-Kit-Racing).
+Licensed CC0 1.0 (public domain): https://creativecommons.org/publicdomain/zero/1.0/

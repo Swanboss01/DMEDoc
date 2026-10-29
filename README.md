@@ -13,6 +13,15 @@ English | [Français](README.fr.md)
 | **Diagnose the ECU** (`dmedoc check --port COM3`) | Queries the ECU over DS2 (identification + fault memory) and explains the likely causes if it doesn't answer | USB K-line cable, powered ECU |
 | **Analyse a .bin** (`dmedoc bin file.bin`) | Checks a dump: size, erased areas (0xFF), possible part numbers, fingerprints | None |
 | **Compare two .bin** (`dmedoc diff a.bin b.bin`) | Compares two dumps (e.g. dead ECU vs a known-good file) | None |
+| **3D simulator** (`dmedoc sim`) | Drive a car with a *virtual* ECU, inject faults, see why it won't start | None |
+
+## 3D simulator
+
+A car you can drive (camera follows it) with a **virtual ECU**: switch the ignition on, start the engine, inject faults (unpowered ECU, bad flash, no crank signal, EWS not validated) and the program explains why the engine won't run, using the same kind of rules as the real diagnosis.
+
+**Critical faults** (overvoltage, reversed polarity, output short circuit) **stop the simulation immediately**: power is cut, the car and the controls freeze and a red banner explains what to fix. This mirrors what a real bench must do to avoid damaging an ECU.
+
+> The simulator is virtual: it does not reproduce the exact behaviour of a real MS42, and there is no hardware protection in this version (the program only reads over K-line).
 
 ## What it does NOT do
 
@@ -24,7 +33,7 @@ English | [Français](README.fr.md)
 
 Download from the **Releases** page:
 
-- `DMEDoc-Setup-0.2.0.exe`: installer (NSIS), with Start menu / desktop shortcuts and an uninstaller. English or French.
+- `DMEDoc-Setup-0.3.0.exe`: installer (NSIS), with Start menu / desktop shortcuts and an uninstaller. English or French.
 - `DMEDoc.exe`: portable version, no installation.
 
 Both open a graphical interface and ask for administrator rights. On first launch the program asks for your language (English or French); the *Language* button changes it later. Windows SmartScreen / Defender may warn about unsigned executables.
@@ -40,12 +49,11 @@ python -m dmedoc bin my_dump.bin
 python -m dmedoc --lang fr check --port COM3
 ```
 
-Build the executables:
+Build the executables (Python 3.14 or older: Panda3D has no wheel for newer versions):
 
 ```
-pip install pyinstaller pyserial
-pyinstaller --onefile --windowed --uac-admin --name DMEDoc --icon assets/dmedoc.ico --add-data "assets/dmedoc.png;assets" run_gui.py
-makensis installer.nsi
+pip install pyserial pyinstaller panda3d panda3d-gltf pillow
+powershell -File build.ps1 -Python path\to\python.exe
 ```
 
 ## Tests
@@ -59,6 +67,10 @@ python -m unittest discover tests
 - Fault code decoding and live values
 - Checksum verification (after validation on real dumps)
 - Car simulation bench (60-2 crank signal, cam, sensors, EWS)
+
+## Credits
+
+3D models: *Starter Kit Racing* by [Kenney](https://kenney.nl), CC0 (see `assets/models/CREDITS.txt`).
 
 ## License
 

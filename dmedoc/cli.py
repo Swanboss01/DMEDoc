@@ -33,6 +33,13 @@ def cmd_gui(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_sim(args: argparse.Namespace) -> int:
+    from .i18n import get_lang
+    from .sim3d import run_sim
+
+    return run_sim(["--lang", get_lang()])
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="dmedoc", description="MS42 diagnostics (read-only) - PREVIEW")
     p.add_argument("--lang", choices=sorted(LANGS), help="output language (default: saved choice, else en)")
@@ -53,6 +60,9 @@ def main(argv: list[str] | None = None) -> int:
 
     g = sub.add_parser("gui", help="Open the graphical interface")
     g.set_defaults(func=cmd_gui)
+
+    s = sub.add_parser("sim", help="Open the 3D simulator (needs panda3d + panda3d-gltf)")
+    s.set_defaults(func=cmd_sim)
 
     args = p.parse_args(argv)
     if args.cmd != "gui":  # the GUI asks / loads the language itself

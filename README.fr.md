@@ -13,6 +13,15 @@ Outil de diagnostic **en lecture seule** pour calculateurs moteur BMW **MS42** (
 | **Diagnostiquer le calculateur** (`dmedoc check --port COM3`) | Interroge le calculateur en DS2 (identification + mémoire défauts) et explique les causes probables s'il ne répond pas | Câble K-line USB, calculateur alimenté |
 | **Analyser un .bin** (`dmedoc bin fichier.bin`) | Analyse un dump : taille, zones effacées (0xFF), références possibles, empreintes | Aucun |
 | **Comparer deux .bin** (`dmedoc diff a.bin b.bin`) | Compare deux dumps (ex. calculateur HS vs fichier sain) | Aucun |
+| **Simulateur 3D** (`dmedoc sim`) | Conduire une voiture avec un calculateur *virtuel*, injecter des pannes, voir pourquoi elle ne démarre pas | Aucun |
+
+## Simulateur 3D
+
+Une voiture à conduire (la caméra la suit) avec un **calculateur virtuel** : mets le contact, démarre le moteur, injecte des pannes (calculateur non alimenté, flash corrompu, pas de signal vilebrequin, EWS non validé) et le programme explique pourquoi le moteur ne tourne pas, avec le même genre de règles que le vrai diagnostic.
+
+Les **pannes critiques** (surtension, polarité inversée, court-circuit d'une sortie) **arrêtent immédiatement la simulation** : l'alimentation est coupée, la voiture et les commandes se figent et un bandeau rouge explique quoi corriger. C'est ce que devra faire un vrai banc pour ne pas endommager un calculateur.
+
+> Le simulateur est virtuel : il ne reproduit pas exactement le comportement d'un vrai MS42, et il n'y a pas de protection matérielle dans cette version (le programme lit seulement la K-line).
 
 ## Ce que ça ne fait PAS
 
@@ -24,7 +33,7 @@ Outil de diagnostic **en lecture seule** pour calculateurs moteur BMW **MS42** (
 
 À télécharger sur la page **Releases** :
 
-- `DMEDoc-Setup-0.2.0.exe` : installateur (NSIS), avec raccourcis menu Démarrer / bureau et désinstallateur. En anglais ou en français.
+- `DMEDoc-Setup-0.3.0.exe` : installateur (NSIS), avec raccourcis menu Démarrer / bureau et désinstallateur. En anglais ou en français.
 - `DMEDoc.exe` : version portable, sans installation.
 
 Les deux ouvrent une interface graphique et demandent les droits administrateur. Au premier lancement, le programme demande la langue (anglais ou français) ; le bouton *Langue* permet de la changer ensuite. Windows SmartScreen / Defender peut avertir pour un exécutable non signé.
@@ -40,12 +49,11 @@ python -m dmedoc bin mon_dump.bin
 python -m dmedoc --lang fr check --port COM3
 ```
 
-Construire les exécutables :
+Construire les exécutables (Python 3.14 ou plus ancien : Panda3D n'a pas de version pour les Python plus récents) :
 
 ```
-pip install pyinstaller pyserial
-pyinstaller --onefile --windowed --uac-admin --name DMEDoc --icon assets/dmedoc.ico --add-data "assets/dmedoc.png;assets" run_gui.py
-makensis installer.nsi
+pip install pyserial pyinstaller panda3d panda3d-gltf pillow
+powershell -File build.ps1 -Python chemin\vers\python.exe
 ```
 
 ## Tests
@@ -59,6 +67,10 @@ python -m unittest discover tests
 - Décodage des codes défaut et des valeurs en direct
 - Vérification des checksums (après validation sur de vrais dumps)
 - Banc de simulation voiture (vilebrequin 60-2, came, capteurs, EWS)
+
+## Crédits
+
+Modèles 3D : *Starter Kit Racing* de [Kenney](https://kenney.nl), CC0 (voir `assets/models/CREDITS.txt`).
 
 ## Licence
 

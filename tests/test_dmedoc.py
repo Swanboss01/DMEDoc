@@ -73,5 +73,44 @@ class TestDiagnose(unittest.TestCase):
             set_lang("en")
 
 
+class TestSim(unittest.TestCase):
+    def test_ok(self):
+        from dmedoc.sim import SimState, diagnose_sim
+
+        st = SimState(ignition=True)
+        self.assertTrue(st.can_run())
+        self.assertEqual(diagnose_sim(st)[0].level, "info")
+
+    def test_power_hides_other_faults(self):
+        from dmedoc.sim import SimState, diagnose_sim
+
+        st = SimState(ignition=True, fault_power=True, fault_ews=True)
+        self.assertFalse(st.can_run())
+        self.assertEqual(len(diagnose_sim(st)), 1)
+
+    def test_multiple_faults(self):
+        from dmedoc.sim import SimState, diagnose_sim
+
+        st = SimState(ignition=True, fault_crank=True, fault_ews=True)
+        self.assertEqual(len(diagnose_sim(st)), 2)
+
+    def test_critical_blocks_and_comes_first(self):
+        from dmedoc.sim import SimState, diagnose_sim
+
+        st = SimState(ignition=True, fault_ews=True, fault_short=True)
+        self.assertEqual(st.critical(), ["short"])
+        self.assertFalse(st.can_run())
+        out = diagnose_sim(st)
+        self.assertEqual(len(out), 2)  # the critical cause + the "stopped" notice
+        self.assertTrue(all(f.level == "error" for f in out))
+
+    def test_ignition_off(self):
+        from dmedoc.sim import SimState, diagnose_sim
+
+        st = SimState(ignition=False, fault_ews=True)
+        self.assertFalse(st.can_run())
+        self.assertEqual(diagnose_sim(st)[0].level, "info")
+
+
 if __name__ == "__main__":
     unittest.main()
