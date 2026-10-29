@@ -18,6 +18,8 @@ SetCompressor /SOLID lzma
 !include "x64.nsh"
 
 !define MUI_ABORTWARNING
+!define MUI_ICON "assets\dmedoc.ico"
+!define MUI_UNICON "assets\dmedoc.ico"
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "LICENSE"

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import sys
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -20,10 +22,25 @@ def list_ports() -> list[str]:
         return []
 
 
+def _icon_path() -> str:
+    """assets/dmedoc.png, from the PyInstaller bundle or the repo."""
+    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    return os.path.join(base, "assets", "dmedoc.png")
+
+
+def set_window_icon(win: tk.Tk) -> None:
+    try:
+        win._icon = tk.PhotoImage(file=_icon_path())  # keep a reference
+        win.iconphoto(True, win._icon)
+    except (tk.TclError, OSError):
+        pass  # missing icon is cosmetic only
+
+
 def choose_language() -> str:
     """Small modal window asking for the language. Closing it keeps English."""
     root = tk.Tk()
     root.title("DMEDoc")
+    set_window_icon(root)
     root.resizable(False, False)
     chosen = {"lang": "en"}
 
@@ -46,6 +63,7 @@ class App(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.restart = False
+        set_window_icon(self)
         self.title(t("title", ver=__version__))
         self.geometry("760x520")
         self.minsize(600, 400)

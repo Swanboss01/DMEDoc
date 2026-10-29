@@ -44,7 +44,7 @@ Construire les exécutables :
 
 ```
 pip install pyinstaller pyserial
-pyinstaller --onefile --windowed --uac-admin --name DMEDoc run_gui.py
+pyinstaller --onefile --windowed --uac-admin --name DMEDoc --icon assets/dmedoc.ico --add-data "assets/dmedoc.png;assets" run_gui.py
 makensis installer.nsi
 ```
 
