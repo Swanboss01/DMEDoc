@@ -18,7 +18,16 @@ Outil de diagnostic **en lecture seule** pour calculateurs moteur BMW **MS42** (
 - **Pas de vérification des checksums Siemens** (non implémentée) : `bin` détecte seulement les dumps manifestement incomplets.
 - Le décodage des codes défaut n'est pas encore fait : les octets sont affichés bruts.
 
-## Installation
+## Version Windows (.exe)
+
+`DMEDoc.exe` (interface graphique, demande les droits administrateur) est joint à la *release* « preview ». Windows SmartScreen / Defender peut l'avertir car il n'est pas signé : c'est normal pour un exe PyInstaller non signé.
+
+Pour le reconstruire : `pip install pyinstaller pyserial` puis
+`pyinstaller --onefile --windowed --uac-admin --name DMEDoc run_gui.py`
+
+Le mode graphique est aussi disponible avec `python -m dmedoc gui`.
+
+## Installation (ligne de commande)
 
 ```
 pip install pyserial
