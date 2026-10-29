@@ -24,7 +24,7 @@ English | [Français](README.fr.md)
 
 Download from the **Releases** page:
 
-- `DMEDoc-Setup-0.1.0.exe`: installer (NSIS), with Start menu / desktop shortcuts and an uninstaller. English or French.
+- `DMEDoc-Setup-0.2.0.exe`: installer (NSIS), with Start menu / desktop shortcuts and an uninstaller. English or French.
 - `DMEDoc.exe`: portable version, no installation.
 
 Both open a graphical interface and ask for administrator rights. On first launch the program asks for your language (English or French); the *Language* button changes it later. Windows SmartScreen / Defender may warn about unsigned executables.

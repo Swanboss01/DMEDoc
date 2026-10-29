@@ -24,7 +24,7 @@ Outil de diagnostic **en lecture seule** pour calculateurs moteur BMW **MS42** (
 
 À télécharger sur la page **Releases** :
 
-- `DMEDoc-Setup-0.1.0.exe` : installateur (NSIS), avec raccourcis menu Démarrer / bureau et désinstallateur. En anglais ou en français.
+- `DMEDoc-Setup-0.2.0.exe` : installateur (NSIS), avec raccourcis menu Démarrer / bureau et désinstallateur. En anglais ou en français.
 - `DMEDoc.exe` : version portable, sans installation.
 
 Les deux ouvrent une interface graphique et demandent les droits administrateur. Au premier lancement, le programme demande la langue (anglais ou français) ; le bouton *Langue* permet de la changer ensuite. Windows SmartScreen / Defender peut avertir pour un exécutable non signé.

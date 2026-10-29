@@ -1,7 +1,7 @@
 [project]
 name = "dmedoc"
-version = "0.1.0"
-description = "Diagnostic MS42 (BMW) en lecture seule - PREVIEW"
+version = "0.2.0"
+description = "MS42 (BMW) read-only diagnostics - PREVIEW"
 requires-python = ">=3.9"
 dependencies = ["pyserial"]
 

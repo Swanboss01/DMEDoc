@@ -2,7 +2,7 @@
 ; Build: pyinstaller first (dist\DMEDoc.exe), then: makensis installer.nsi
 
 !define APPNAME "DMEDoc"
-!define APPVERSION "0.1.0"
+!define APPVERSION "0.2.0"
 !define PUBLISHER "Swanboss01"
 !define UNINSTKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
 

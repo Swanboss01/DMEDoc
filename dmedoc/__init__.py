@@ -1,3 +1,3 @@
-"""DMEDoc — diagnostic MS42 (lecture seule). PREVIEW."""
+"""DMEDoc - MS42 diagnostics (read-only). PREVIEW."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
